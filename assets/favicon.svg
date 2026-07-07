@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Djaya">
+  <rect width="64" height="64" rx="14" fill="#061b0e"/>
+  <!-- Cairn (stacked stones) — Djaya brand motif -->
+  <ellipse cx="32" cy="46" rx="16" ry="6.5" fill="#b4cdb8"/>
+  <ellipse cx="32" cy="34" rx="12" ry="5.5" fill="#d0e9d4"/>
+  <ellipse cx="32" cy="24" rx="8.5" ry="4.5" fill="#eee0d2"/>
+  <ellipse cx="32" cy="16" rx="5" ry="3.5" fill="#f4dfcb"/>
+</svg>
