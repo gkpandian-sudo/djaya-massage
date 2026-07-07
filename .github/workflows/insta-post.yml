@@ -2,13 +2,18 @@ name: Instagram Post
 
 on:
   schedule:
-    - cron: '0 2 * * *'        # 02:00 UTC = 09:00 WIB daily
+    - cron: '0 2 * * 1,3,5,6'   # Mon/Wed/Fri/Sat 09:00 WIB → image post
+    - cron: '0 2 * * 2,4,0'     # Tue/Thu/Sun   09:00 WIB → animated reel
   workflow_dispatch:
     inputs:
       post_type:
-        description: 'Override post type (leave empty for auto from weekday)'
+        description: 'Override post type (image pipeline only)'
         required: false
         default: ''
+      content_type:
+        description: 'image | reel | auto (default: auto detects from weekday)'
+        required: false
+        default: 'auto'
       dry_run:
         description: 'Render only — skip commit and publish'
         type: boolean
@@ -23,7 +28,7 @@ concurrency:
   cancel-in-progress: false     # never kill a running publish
 
 permissions:
-  contents: write               # needed to commit rotation index and images
+  contents: write               # needed to commit rotation index and media files
 
 jobs:
   post:
@@ -41,18 +46,46 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
+      - name: Install system deps (ffmpeg for moviepy)
+        run: sudo apt-get install -y ffmpeg
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Run tests
         run: pytest
 
-      - name: Run pipeline
+      - name: Determine content type
+        id: detect
+        run: |
+          OVERRIDE="${{ inputs.content_type }}"
+          DAY=$(date +%u)   # 1=Mon … 7=Sun (ISO weekday)
+          if [ "$OVERRIDE" = "reel" ]; then
+            echo "type=reel" >> $GITHUB_OUTPUT
+          elif [ "$OVERRIDE" = "image" ]; then
+            echo "type=image" >> $GITHUB_OUTPUT
+          elif [ "$DAY" = "2" ] || [ "$DAY" = "4" ] || [ "$DAY" = "7" ]; then
+            echo "type=reel" >> $GITHUB_OUTPUT
+          else
+            echo "type=image" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post image
+        if: steps.detect.outputs.type == 'image'
         env:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-          # GITHUB_REPOSITORY and GITHUB_REF_NAME are set automatically — do NOT override them
           POST_TYPE: ${{ inputs.post_type }}
           DRY_RUN: ${{ inputs.dry_run }}
           CAPTION_LANG: ${{ inputs.lang || 'id' }}
         run: python scripts/run_ig.py
+
+      - name: Post reel
+        if: steps.detect.outputs.type == 'reel'
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          REEL_TEMPLATE: ''
+          DRY_RUN: ${{ inputs.dry_run }}
+          CAPTION_LANG: ${{ inputs.lang || 'id' }}
+        run: python scripts/run_ig_reel.py

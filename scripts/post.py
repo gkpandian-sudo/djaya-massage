@@ -60,3 +60,24 @@ def publish_image(
     container_id = _create_container(ig_user_id, image_url, caption, access_token)
     _poll_container(container_id, access_token)
     return _publish_container(ig_user_id, container_id, access_token)
+
+
+def publish_reel(
+    video_url: str, caption: str, ig_user_id: str, access_token: str
+) -> str:
+    resp = requests.post(
+        f"{GRAPH}/{ig_user_id}/media",
+        params={
+            "media_type":   "REELS",
+            "video_url":    video_url,
+            "caption":      caption,
+            "share_to_feed": "true",
+            "access_token": access_token,
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    container_id = resp.json()["id"]
+    # Video processing takes 2-5 min; poll every 10s for up to 6 min
+    _poll_container(container_id, access_token, retries=36, delay=10)
+    return _publish_container(ig_user_id, container_id, access_token)
