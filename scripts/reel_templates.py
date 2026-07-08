@@ -312,18 +312,42 @@ def build_r3(content: dict, lang: str = "id", photos: list = None, duration: flo
     cta_arr   = render_text_shadowed(cta_txt, "segoeuib.ttf", 32, (215,190,152), max_width=900, shadow_blur=3)
     end_frame = end_card_frame()
 
+    # Ken Burns params per shot — varied direction/speed for visual rhythm
+    KB_PARAMS = [
+        (1.00, 1.07, (6,  -10)),   # shot 0: push in + drift up
+        (1.07, 1.00, (-8,  0)),    # shot 1: pull out + drift left
+        (1.00, 1.06, (0,  -14)),   # shot 2: vertical drift only
+        (1.00, 1.09, (0,  -20)),   # shot 3: hardest push for the "for you" reveal
+    ]
+    DISSOLVE = 0.35   # seconds of cross-dissolve at each shot boundary
+
     def make_frame(t: float) -> np.ndarray:
         shot_idx = max(0, min(int(t / shot_dur), len(shots) - 1))
         shot_t   = t - shot_idx * shot_dur
+        next_idx = min(shot_idx + 1, len(shots) - 1)
 
-        p = _pick(paths, shot_idx)
-        if p:
-            src  = _load_src(str(p), REEL_SIZE)
-            base = ken_burns_frame(src, shot_t, shot_dur, 1.0, 1.07, drift=(6, -10))
-            base = warm_tint(base, 0.14)
-            base = dark_gradient(base, int(H * 0.40), BLACK, 0.88)
-        else:
-            base = _solid((30, 20, 12))
+        def render_shot(idx: int, local_t: float) -> np.ndarray:
+            zs, ze, drift = KB_PARAMS[idx % len(KB_PARAMS)]
+            p = _pick(paths, idx)
+            if p:
+                src  = _load_src(str(p), REEL_SIZE)
+                base = ken_burns_frame(src, local_t, shot_dur, zs, ze, drift=drift)
+                base = warm_tint(base, 0.14)
+                base = dark_gradient(base, int(H * 0.40), BLACK, 0.88)
+            else:
+                base = _solid((30, 20, 12))
+            return base
+
+        base = render_shot(shot_idx, shot_t)
+
+        # Cross-dissolve in the last DISSOLVE seconds of each shot (except the final shot)
+        if shot_t > (shot_dur - DISSOLVE) and shot_idx < len(shots) - 1:
+            blend = ease_in_out_sine(min((shot_t - (shot_dur - DISSOLVE)) / DISSOLVE, 1.0))
+            next_frame = render_shot(next_idx, 0.0)
+            base = np.clip(
+                base.astype(np.float32) * (1 - blend) + next_frame.astype(np.float32) * blend,
+                0, 255,
+            ).astype(np.uint8)
 
         base = top_vignette(base, 200, 0.48)
         base = draw_logo(base, 36, 44, size=80, alpha=0.85)
@@ -334,21 +358,27 @@ def build_r3(content: dict, lang: str = "id", photos: list = None, duration: flo
         text_y = int(H * 0.56)
         scrim_h = header_arr.shape[0] + (body_arr.shape[0] + 18 if body_arr is not None else 0) + 48
         base = paint_scrim(base, text_y - 20, scrim_h, alpha=0.54, feather=28)
-        base = composite(base, header_arr, MARGIN, text_y, h_a)
+
+        # Header slides in from left
+        h_x = slide_in_x(header_arr, x_from=28, x_to=MARGIN, progress=(shot_t - 0.3) / 0.5 if shot_t > 0.3 else 0.0)
+        base = composite(base, header_arr, h_x, text_y, h_a)
         if body_arr is not None:
             base = composite(base, body_arr, MARGIN, text_y + header_arr.shape[0] + 14, b_a)
 
         # CTA in final 7s
         if t > duration - 7.0:
             cta_a = fade_alpha(duration - 7.0, 1.0, t)
-            base = paint_scrim(base, H - 290, 260, alpha=0.52, feather=24)
-            base = composite(base, cta_arr, MARGIN, H - 268, cta_a)
+            base  = paint_scrim(base, H - 290, 260, alpha=0.52, feather=24)
+            base  = composite(base, cta_arr, MARGIN, H - 268, cta_a)
 
         # End card
         if t > duration - 3.0:
             pt = t - (duration - 3.0)
             a  = ease_out_cubic(min(pt / 0.8, 1.0))
-            base = np.clip(base.astype(np.float32)*(1-a) + end_frame.astype(np.float32)*a, 0, 255).astype(np.uint8)
+            base = np.clip(
+                base.astype(np.float32) * (1 - a) + end_frame.astype(np.float32) * a,
+                0, 255,
+            ).astype(np.uint8)
 
         return base
 
