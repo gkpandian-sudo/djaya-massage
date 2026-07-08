@@ -173,8 +173,7 @@ def build_r1(content: dict, lang: str = "id", photos: list = None, duration: flo
                     base.astype(np.float32) * (1 - strip_a) + base_with_strip.astype(np.float32) * strip_a,
                     0, 255,
                 ).astype(np.uint8)
-            else:
-                base = bottom_strip(base)
+            # strip stays invisible until fade_alpha blend takes over at t=13.0
             _last_p3_frame[0] = base
             return base
 
