@@ -109,3 +109,19 @@ def test_render_text_block_has_nonzero_alpha():
 def test_render_stars_count_five():
     arr = A.render_stars(5, size=40)
     assert arr.ndim == 3 and arr.shape[2] == 4
+
+
+def test_composite_alpha_gt1_clamped():
+    """ease_out_back can return >1.0; composite must not go negative."""
+    base = np.full((10, 10, 3), 100, dtype=np.uint8)
+    overlay = np.full((4, 4, 4), 255, dtype=np.uint8)
+    overlay[:, :, :3] = 200
+    result = A.composite(base, overlay, 0, 0, alpha=1.15)
+    assert result.min() >= 0, "composite should not produce negative values with alpha>1"
+    assert result[1, 1, 0] == 200, "composite with alpha>1 should still yield full overlay"
+
+def test_composite_alpha_negative_safe():
+    base = np.full((10, 10, 3), 100, dtype=np.uint8)
+    overlay = np.full((4, 4, 4), 255, dtype=np.uint8)
+    result = A.composite(base, overlay, 0, 0, alpha=-0.1)
+    assert (result == 100).all(), "negative alpha should preserve base"

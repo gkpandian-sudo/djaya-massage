@@ -211,7 +211,7 @@ def composite(
         return base
     out  = base.copy().astype(np.float32)
     src  = overlay[oy0:oy1, ox0:ox1].astype(np.float32)
-    a    = (src[:,:,3:4] / 255.0) * alpha
+    a    = np.clip((src[:, :, 3:4] / 255.0) * np.clip(alpha, 0.0, 1.0), 0.0, 1.0)
     rgb  = src[:,:,:3]
     out[by0:by1, bx0:bx1] = out[by0:by1, bx0:bx1] * (1 - a) + rgb * a
     return np.clip(out, 0, 255).astype(np.uint8)

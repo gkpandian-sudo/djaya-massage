@@ -87,6 +87,7 @@ def build_r1(content: dict, lang: str = "id", photos: list = None, duration: flo
 
     # Phase timings
     P1_END, P2_END, P3_END, P4_END = 7.0, 12.0, 17.0, 22.0
+    _last_p3_frame: list = [None]   # mutable container — captures last Phase 3 frame
 
     def make_frame(t: float) -> np.ndarray:
         # ── Phase 1 (0–7s): foot/treatment photo, title fades in ──
@@ -142,17 +143,15 @@ def build_r1(content: dict, lang: str = "id", photos: list = None, duration: flo
             base = paint_scrim(base, card_y - 12, price_scrim_h, alpha=0.55, feather=20)
             base = composite(base, price_arr, MARGIN, card_y + 8, p_a)
             base = bottom_strip(base)
+            _last_p3_frame[0] = base
             return base
 
         # ── Phase 4 (17–22s): cream end card ──
         else:
             pt   = t - P3_END
-            pdur = P4_END - P3_END
+            prev = _last_p3_frame[0] if _last_p3_frame[0] is not None else _solid(BLACK)
             a    = ease_out_cubic(min(pt / 0.6, 1.0))
-            # Blend from last frame dark bg to cream end card
-            dark = _solid(BLACK)
-            frame = (dark.astype(np.float32) * (1 - a) + end_frame.astype(np.float32) * a)
-            return np.clip(frame, 0, 255).astype(np.uint8)
+            return np.clip(prev.astype(np.float32) * (1 - a) + end_frame.astype(np.float32) * a, 0, 255).astype(np.uint8)
 
     return _make_clip(make_frame, duration, "r1")
 
@@ -377,13 +376,13 @@ def build_r4(content: dict, lang: str = "id", photos: list = None,
             base = draw_logo(base, 36, 44, size=80, alpha=0.9)
             badge_y = int(H * 0.22) if t >= 3.0 else int(H * 0.28)
 
-            # Phase A (0–3s): badge scales in with bounce
+            # Phase A (0–3s): badge fades in
             if t < 3.0:
-                s = ease_out_back(min(t / 0.65, 1.0))
+                alpha_a = ease_out_cubic(min(t / 0.65, 1.0))
                 bx = int(W / 2 - badge_arr.shape[1] // 2)
                 base = paint_scrim(base, badge_y - 20, badge_arr.shape[0] + off_arr.shape[0] + 40, alpha=0.30)
-                base = composite(base, badge_arr, bx, badge_y, s)
-                base = composite(base, off_arr,   int(W / 2 - off_arr.shape[1] // 2), badge_y + badge_arr.shape[0], s)
+                base = composite(base, badge_arr, bx, badge_y, alpha_a)
+                base = composite(base, off_arr,   int(W / 2 - off_arr.shape[1] // 2), badge_y + badge_arr.shape[0], alpha_a)
 
             # Phase B (3–7s): headline + terms slide in
             elif t < 7.0:
