@@ -28,6 +28,8 @@ import content as DATA
 import content_rotation as ROT
 from reel_templates import build_r1, build_r2, build_r3, build_r4, build_r5
 
+_ALL = DATA.ALL_PHOTOS  # 15 real photos — rotated across templates
+
 REPO_ROOT     = Path(__file__).resolve().parent.parent
 OUTPUT_DIR    = REPO_ROOT / "output" / "reels-animated"
 ROTATION_PATH = str(REPO_ROOT / "data" / "rotation.json")
@@ -66,6 +68,7 @@ def _build_content_dict(template: str, lang: str) -> dict:
                 "category": t["category"],
                 "desc":     t["desc"],
                 "prices":   t["prices"],
+                "photo":    t.get("photo", ""),
             }
         }
     elif template == "r2":
@@ -86,20 +89,44 @@ def _build_content_dict(template: str, lang: str) -> dict:
     return {}
 
 
-def _photo_list(template: str, post_type: str) -> list[str]:
-    """Choose the best photos for a given template."""
-    gallery = DATA.GALLERY_PHOTOS
+def _photo_list(template: str, post_type: str, menu_idx: int = 0, test_idx: int = 0) -> list[str]:
+    """Rotate through ALL_PHOTOS so each day's reel shows different images."""
+    N = len(_ALL)
+
     if template == "r1":
-        return gallery[:3]
+        # 3 photos: treatment-specific photo first, then 2 adjacent rotated shots
+        t_data = _build_content_dict("r1", "id").get("treatment", {})
+        t_photo = t_data.get("photo", "")  # e.g. "gallery-3.jpg"
+        base = menu_idx % N
+        pool = [t_photo] if t_photo else []
+        for i in range(1, N):
+            cand = _ALL[(base + i) % N]
+            if cand not in pool:
+                pool.append(cand)
+            if len(pool) >= 3:
+                break
+        return pool
+
     elif template == "r2":
-        return gallery[:2]
+        # 2 photos rotating per testimonial index
+        base = test_idx % N
+        return [_ALL[base], _ALL[(base + 5) % N]]
+
     elif template == "r3":
-        return gallery  # cycle through all
+        # 4–6 photos starting at a different offset each day
+        base = (menu_idx * 3) % N
+        return [_ALL[(base + i) % N] for i in range(6)]
+
     elif template == "r4":
-        return [DATA.HERO_PHOTO]
+        # Hero + 2 treatment photos for promo urgency
+        return ["Hero.jpeg", "treatment-14.jpeg", "treatment-15.jpeg"]
+
     elif template == "r5":
-        return gallery[:2]
-    return gallery[:2]
+        # 3 photos: hero + 2 rotating gallery shots for cinematic ambiance
+        base = (menu_idx + 2) % N
+        return ["Hero.jpeg", _ALL[base], _ALL[(base + 4) % N]]
+
+    return [_ALL[menu_idx % N]]
 
 
 def render(
@@ -116,10 +143,12 @@ def render(
     label     = post_type or template
     out_path  = str(out_dir / f"{date_str}-{label}.mp4")
 
-    cfg      = TEMPLATE_DEFAULTS[template]
-    duration = cfg["duration"] * duration_scale
-    content  = _build_content_dict(template, lang)
-    photos   = _photo_list(template, post_type)
+    cfg        = TEMPLATE_DEFAULTS[template]
+    duration   = cfg["duration"] * duration_scale
+    content    = _build_content_dict(template, lang)
+    menu_idx   = ROT.get_menu_index(ROTATION_PATH)
+    test_idx   = ROT.get_testimonial_index(ROTATION_PATH)
+    photos     = _photo_list(template, post_type, menu_idx, test_idx)
 
     print(f"[djaya-animated] template={template} lang={lang} fps={fps} duration={duration:.1f}s -> {out_path}")
 

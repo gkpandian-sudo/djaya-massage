@@ -226,6 +226,25 @@ TREATMENTS = {
 GALLERY_PHOTOS = [f"gallery-{i}.jpg" for i in range(1, 7)]
 HERO_PHOTO = "hero.jpg"
 
+# All real photos available — sorted loosely by composition quality for reels
+ALL_PHOTOS = [
+    "Hero.jpeg",           # high-res hero exterior / ambiance
+    "hero.jpg",            # hero exterior
+    "gallery-1.jpg",
+    "gallery-2.jpg",
+    "gallery-3.jpg",
+    "gallery-4.jpg",
+    "gallery-5.jpg",
+    "gallery-6.jpg",
+    "treatment-10.jpg",
+    "treatment-11.jpeg",
+    "treatment-12.jpeg",
+    "treatment-14.jpeg",
+    "treatment-15.jpeg",
+    "signature.jpg",
+    "about.jpg",
+]
+
 def all_treatments():
     """Flat list of all treatments across all categories."""
     for items in TREATMENTS.values():

@@ -224,6 +224,72 @@ def fade_alpha(start: float, dur: float, t: float, easing=ease_out_cubic) -> flo
     return easing(min((t - start) / max(dur, 1e-6), 1.0))
 
 
+def paint_scrim(
+    frame: np.ndarray,
+    y: int,
+    h: int,
+    color: Tuple = BLACK,
+    alpha: float = 0.60,
+    feather: int = 24,
+) -> np.ndarray:
+    """Semi-transparent dark band at (y, y+h) to improve text legibility.
+    feather: pixels over which the top edge fades in (soft edge up top, hard at bottom)."""
+    H_f = frame.shape[0]
+    y0, y1 = max(0, y), min(H_f, y + h)
+    out = frame.copy().astype(np.float32)
+    c   = np.array(color, dtype=np.float32)
+    span = y1 - y0
+    for i in range(span):
+        if i < feather:
+            a = alpha * (i / feather)
+        else:
+            a = alpha
+        out[y0 + i] = out[y0 + i] * (1 - a) + c * a
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def render_text_shadowed(
+    text: str,
+    font_name: str = "georgia.ttf",
+    font_size: int = 52,
+    color: Tuple = WHITE,
+    max_width: int = 952,
+    line_spacing: int = 10,
+    shadow_alpha: float = 0.75,
+) -> np.ndarray:
+    """Render text RGBA with a dark blurred drop shadow for any-background legibility."""
+    offset = max(3, font_size // 16)
+    shadow = render_text_block(text, font_name, font_size, BLACK, max_width, line_spacing, padding=offset)
+    main   = render_text_block(text, font_name, font_size, color,  max_width, line_spacing, padding=0)
+
+    # Blur shadow
+    sh_img = Image.fromarray(shadow, "RGBA")
+    sh_img = sh_img.filter(ImageFilter.GaussianBlur(radius=max(2, font_size // 18)))
+    sh_arr = np.array(sh_img)
+    sh_arr[:, :, 3] = (sh_arr[:, :, 3].astype(np.float32) * shadow_alpha).astype(np.uint8)
+
+    OH, OW = shadow.shape[:2]
+    canvas = np.zeros((OH, OW, 4), dtype=np.uint8)
+
+    # Composite shadow then main text
+    for arr in (sh_arr, main):
+        ah, aw = arr.shape[:2]
+        ch = min(ah, OH)
+        cw = min(aw, OW)
+        a  = arr[:ch, :cw, 3:4].astype(np.float32) / 255.0
+        for ch_idx in range(3):
+            canvas[:ch, :cw, ch_idx] = np.clip(
+                canvas[:ch, :cw, ch_idx].astype(np.float32) * (1 - a[:, :, 0])
+                + arr[:ch, :cw, ch_idx].astype(np.float32) * a[:, :, 0],
+                0, 255,
+            ).astype(np.uint8)
+        canvas[:ch, :cw, 3] = np.clip(
+            canvas[:ch, :cw, 3].astype(np.float32) + arr[:ch, :cw, 3].astype(np.float32),
+            0, 255,
+        ).astype(np.uint8)
+    return canvas
+
+
 # ── Logo ──────────────────────────────────────────────────────────────────────
 
 @lru_cache(maxsize=4)
