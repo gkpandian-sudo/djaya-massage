@@ -101,10 +101,19 @@ def build_r1(content: dict, lang: str = "id", photos: list = None, duration: flo
             text_y = int(H * 0.53)
             scrim_h = eyebrow_arr.shape[0] + name_arr.shape[0] + 60
             base = paint_scrim(base, text_y - 20, scrim_h, alpha=0.48, feather=30)
-            base = draw_logo(base, 36, 44, size=80, alpha=fade_alpha(0.3, 0.6, t))
-            ey_a  = fade_alpha(0.5, 0.5, t)
-            nm_a  = fade_alpha(0.9, 0.7, t)
-            base = composite(base, eyebrow_arr, MARGIN, text_y, ey_a)
+            logo_a = fade_alpha(0.3, 0.6, t)
+            base = draw_logo(base, 36, 44, size=80, alpha=logo_a)
+
+            # Gold line wipe below eyebrow — starts at t=0.4, completes by t=0.85
+            wipe_progress = (t - 0.4) / 0.45 if t > 0.4 else 0.0
+            base = line_wipe(base, x=MARGIN, y=text_y - 10, h=6, w_final=140, progress=wipe_progress)
+
+            # Eyebrow: slide in from x=28 → x=MARGIN while fading in
+            ey_a = fade_alpha(0.5, 0.5, t)
+            ey_x = slide_in_x(eyebrow_arr, x_from=28, x_to=MARGIN, progress=(t - 0.5) / 0.5 if t > 0.5 else 0.0)
+            nm_a = fade_alpha(0.9, 0.7, t)
+
+            base = composite(base, eyebrow_arr, ey_x, text_y, ey_a)
             base = composite(base, name_arr,    MARGIN, text_y + 38, nm_a)
             return base
 
@@ -138,12 +147,34 @@ def build_r1(content: dict, lang: str = "id", photos: list = None, duration: flo
             p_a    = fade_alpha(0.3, 0.6, pt)
             base   = draw_logo(base, 36, 44, size=80)
             card_y = int(H * 0.70)
-            # Gold accent bar
-            base[card_y - 8 : card_y - 2, MARGIN : MARGIN + 140] = np.array(GOLD)
-            price_scrim_h = price_arr.shape[0] + 48
-            base = paint_scrim(base, card_y - 12, price_scrim_h, alpha=0.55, feather=20)
-            base = composite(base, price_arr, MARGIN, card_y + 8, p_a)
-            base = bottom_strip(base)
+
+            # Gold accent bar wipe (animated, not static)
+            wipe_p = (pt - 0.2) / 0.45 if pt > 0.2 else 0.0
+            base = line_wipe(base, x=MARGIN, y=card_y - 8, h=6, w_final=140, progress=wipe_p)
+            base = paint_scrim(base, card_y - 12, price_arr.shape[0] + 48, alpha=0.55, feather=20)
+
+            # Animated price count-up (only when prices list is available)
+            if prices and pt > 0.3:
+                try:
+                    first_rp = int(prices[0][1].replace("Rp ", "").replace(".", "").replace(",", ""))
+                    count_progress = min((pt - 0.3) / 0.8, 1.0)
+                    dyn_price_arr = count_up_price(first_rp, count_progress, font_size=44)
+                    base = composite(base, dyn_price_arr, MARGIN, card_y + 8, p_a)
+                except (ValueError, IndexError):
+                    base = composite(base, price_arr, MARGIN, card_y + 8, p_a)
+            else:
+                base = composite(base, price_arr, MARGIN, card_y + 8, p_a)
+
+            # bottom_strip fade-in (was instant pop-in, now fades over 0.6s)
+            strip_a = fade_alpha(float(P2_END) + 1.0, 0.6, t)
+            if strip_a > 0.01:
+                base_with_strip = bottom_strip(base)
+                base = np.clip(
+                    base.astype(np.float32) * (1 - strip_a) + base_with_strip.astype(np.float32) * strip_a,
+                    0, 255,
+                ).astype(np.uint8)
+            else:
+                base = bottom_strip(base)
             _last_p3_frame[0] = base
             return base
 
