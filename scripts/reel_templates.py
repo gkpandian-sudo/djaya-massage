@@ -17,6 +17,7 @@ from anim_effects import (
     render_text_block, render_text_shadowed, render_stars, render_price_ticker,
     composite, draw_logo, end_card_frame, bottom_strip,
     paint_scrim, _load_src, load_audio,
+    line_wipe, slide_in_x, scale_overlay, count_up_price,
 )
 
 W, H = REEL_SIZE
@@ -77,12 +78,12 @@ def build_r1(content: dict, lang: str = "id", photos: list = None, duration: flo
     price_lbl = t_data.get("price_label", "")
 
     # Pre-render text overlays — shadowed for readability on any photo
-    eyebrow_arr  = render_text_shadowed(cat,  "segoeuib.ttf", 26, GOLD,           max_width=900)
-    name_arr     = render_text_shadowed(name, "georgiab.ttf", 70, WHITE,          max_width=952)
-    desc_arr     = render_text_shadowed(desc, "segoeui.ttf",  30, (215,190,155),  max_width=952)
-    price_arr    = (render_price_ticker(prices, 40, WHITE)
+    eyebrow_arr  = render_text_shadowed(cat,  "segoeuib.ttf", 28, (230,190,80),  max_width=900,  shadow_blur=3)
+    name_arr     = render_text_shadowed(name, "georgiab.ttf", 72, WHITE,          max_width=952,  shadow_blur=4)
+    desc_arr     = render_text_shadowed(desc, "segoeui.ttf",  34, (222,200,168),  max_width=952,  line_spacing=12, shadow_blur=3)
+    price_arr    = (render_price_ticker(prices, 44, WHITE)
                     if prices else
-                    render_text_shadowed(price_lbl, "segoeuib.ttf", 40, WHITE, max_width=952))
+                    render_text_shadowed(price_lbl, "segoeuib.ttf", 44, WHITE, max_width=952, shadow_blur=3))
     end_frame    = end_card_frame()
 
     # Phase timings
@@ -172,14 +173,14 @@ def build_r2(content: dict, lang: str = "id", photos: list = None, duration: flo
     quote   = f'"{text}"'
 
     # One star RGBA for animation (we composite N of them with stagger)
-    star_single = render_text_block("★", "segoeuib.ttf", 72, GOLD_LIGHT, max_width=100)
+    star_single = render_text_block("★", "segoeuib.ttf", 72, (230,190,80), max_width=100)
     sw = star_single.shape[1]
 
-    source_arr = render_text_shadowed(f"{source} Review", "segoeuib.ttf", 30, GOLD,          max_width=800)
-    quote_arr  = render_text_shadowed(quote,               "georgiai.ttf", 42, WHITE,         max_width=920, line_spacing=14)
-    name_arr   = render_text_shadowed(f"— {name}",         "segoeuib.ttf", 34, (210,185,148), max_width=800)
-    badge_arr  = render_text_shadowed("Google 4.9 ★  ·  Tripadvisor 5.0 ★", "segoeui.ttf", 28, (200,178,132), max_width=820)
-    cta_arr    = render_text_shadowed("wa.me/6285278355590", "segoeuib.ttf", 38, GOLD,        max_width=800)
+    source_arr = render_text_shadowed(f"{source} Review", "segoeuib.ttf", 30, (193,152,28),  max_width=800, shadow_blur=3)
+    quote_arr  = render_text_shadowed(quote,               "georgiai.ttf", 44, WHITE,         max_width=920, line_spacing=16, shadow_blur=3)
+    name_arr   = render_text_shadowed(f"— {name}",         "segoeuib.ttf", 34, (210,185,148), max_width=800, shadow_blur=3)
+    badge_arr  = render_text_shadowed("Google 4.9 ★  ·  Tripadvisor 5.0 ★", "segoeui.ttf", 28, (205,183,140), max_width=820, shadow_blur=3)
+    cta_arr    = render_text_shadowed("wa.me/6285278355590", "segoeuib.ttf", 38, (230,190,80), max_width=800, shadow_blur=3)
     end_frame  = end_card_frame()
 
     # Background: blurred photo or solid teal
@@ -264,10 +265,10 @@ def build_r3(content: dict, lang: str = "id", photos: list = None, duration: flo
 
     shot_dur = max(0.5, (duration - 3.0) / len(shots))  # ~5.5s each, last 3s = end card
     prerendered = [(
-        render_text_shadowed(h, "segoeuib.ttf", 30, GOLD,  max_width=900),
-        render_text_shadowed(b, "georgiai.ttf", 46, WHITE, max_width=952) if b else None,
+        render_text_shadowed(h, "segoeuib.ttf", 30, (230,190,80), max_width=900, shadow_blur=3),
+        render_text_shadowed(b, "georgiai.ttf", 48, WHITE,         max_width=952, line_spacing=14, shadow_blur=3) if b else None,
     ) for h, b in shots]
-    cta_arr  = render_text_shadowed(cta_txt, "segoeuib.ttf", 30, (210,185,148), max_width=900)
+    cta_arr   = render_text_shadowed(cta_txt, "segoeuib.ttf", 32, (215,190,152), max_width=900, shadow_blur=3)
     end_frame = end_card_frame()
 
     def make_frame(t: float) -> np.ndarray:
@@ -338,13 +339,14 @@ def build_r4(content: dict, lang: str = "id", photos: list = None,
         delta = (promo_end - date.today()).days
         days_left = f"Sisa {max(0, delta)} hari" if lang == "id" else f"{max(0, delta)} days left"
 
-    badge_arr = render_text_shadowed("30%", "georgiab.ttf", 196, WHITE,          max_width=620)
-    off_arr   = render_text_shadowed("OFF" if lang == "en" else "DISKON", "segoeuib.ttf", 62, GOLD_LIGHT, max_width=520)
-    h_arr     = render_text_shadowed(headline, "georgiab.ttf",  56, WHITE,          max_width=952)
-    s1_arr    = render_text_shadowed(sub1,     "georgiai.ttf",  42, (225,205,165),   max_width=900)
-    s2_arr    = render_text_shadowed(sub2,     "segoeui.ttf",   34, (200,180,138),   max_width=900) if sub2 else None
-    terms_arr = render_text_shadowed(terms_txt,"segoeuib.ttf",  36, GOLD,            max_width=900)
-    days_arr  = render_text_shadowed(days_left,"segoeuib.ttf",  32, (210,185,148),   max_width=600) if days_left else None
+    badge_arr = render_text_shadowed("30%",    "georgiab.ttf", 196, WHITE,         max_width=620, shadow_blur=10)
+    off_arr   = render_text_shadowed("OFF" if lang == "en" else "DISKON",
+                                      "segoeuib.ttf", 62, (230,190,80),  max_width=520, shadow_blur=4)
+    h_arr     = render_text_shadowed(headline, "georgiab.ttf",  58, WHITE,         max_width=952, line_spacing=12, shadow_blur=4)
+    s1_arr    = render_text_shadowed(sub1,     "georgiai.ttf",  42, (228,208,170), max_width=900, line_spacing=12, shadow_blur=3)
+    s2_arr    = render_text_shadowed(sub2,     "segoeui.ttf",   34, (205,185,145), max_width=900, shadow_blur=3) if sub2 else None
+    terms_arr = render_text_shadowed(terms_txt,"segoeuib.ttf",  36, (230,190,80),  max_width=900, shadow_blur=3)
+    days_arr  = render_text_shadowed(days_left,"segoeuib.ttf",  32, WHITE,         max_width=600, shadow_blur=3) if days_left else None
     end_frame = end_card_frame()
 
     # Background: teal + optional photo overlay
@@ -448,10 +450,11 @@ def build_r5(content: dict, lang: str = "id", photos: list = None, duration: flo
         line3 = "Djaya Massage  ·  Penuin Centre, Batam"
         line4 = "Open 10 AM – 10 PM  ·  wa.me/6285278355590"
 
-    l1_arr = render_text_shadowed(line1, "georgiai.ttf", 82, WHITE,          max_width=952)
-    l2_arr = render_text_shadowed(line2, "georgiai.ttf", 82, (228, 205, 165), max_width=952)
-    l3_arr = render_text_shadowed(line3, "segoeuib.ttf", 30, GOLD,            max_width=952)
-    l4_arr = render_text_shadowed(line4, "segoeui.ttf",  26, (195, 170, 130), max_width=952)
+    l1_arr = render_text_shadowed(line1, "georgiai.ttf", 84, WHITE,          max_width=952, shadow_blur=5)
+    l2_arr = render_text_shadowed(line2, "georgiai.ttf", 84, (232,210,170),  max_width=952, shadow_blur=5)
+    # End-card text on CREAM background — use INK/brown, NO shadow (looks dirty on cream)
+    l3_arr = render_text_block(line3, "segoeuib.ttf", 30, (52,38,24),   max_width=952)
+    l4_arr = render_text_block(line4, "segoeui.ttf",  28, (120,96,68),  max_width=952)
     end_frame = end_card_frame()
 
     LB_H = 100  # cinematic letterbox height each side

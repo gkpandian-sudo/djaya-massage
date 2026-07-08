@@ -308,15 +308,17 @@ def render_text_shadowed(
     max_width: int = 952,
     line_spacing: int = 10,
     shadow_alpha: float = 0.75,
+    shadow_blur: int = 0,   # 0 = auto (font_size // 18)
 ) -> np.ndarray:
     """Render text RGBA with a dark blurred drop shadow for any-background legibility."""
     offset = max(3, font_size // 16)
+    blur_r = shadow_blur if shadow_blur > 0 else max(2, font_size // 18)
     shadow = render_text_block(text, font_name, font_size, BLACK, max_width, line_spacing, padding=offset)
     main   = render_text_block(text, font_name, font_size, color,  max_width, line_spacing, padding=0)
 
     # Blur shadow
     sh_img = Image.fromarray(shadow, "RGBA")
-    sh_img = sh_img.filter(ImageFilter.GaussianBlur(radius=max(2, font_size // 18)))
+    sh_img = sh_img.filter(ImageFilter.GaussianBlur(radius=blur_r))
     sh_arr = np.array(sh_img)
     sh_arr[:, :, 3] = (sh_arr[:, :, 3].astype(np.float32) * shadow_alpha).astype(np.uint8)
 
