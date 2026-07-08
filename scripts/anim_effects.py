@@ -351,12 +351,19 @@ def bottom_strip(frame: np.ndarray, strip_h: int = 130) -> np.ndarray:
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
 
+# Maps reel template → audio track in assets/audio/
+# Mood rationale:
+#   r1 Treatment Showcase → momentum  (confident, driving — earns trust)
+#   r2 Testimonial        → reflect   (measured, thoughtful — builds credibility)
+#   r3 BTS                → calm      (clean, focused — behind-the-scenes authenticity)
+#   r4 Promo Countdown    → pulse     (upbeat, energetic — urgency drives action)
+#   r5 Ambiance           → rise      (hopeful, building — emotional brand feel)
 MOOD_FILES = {
-    "r1": "r1-warm-piano.mp3",
-    "r2": "r2-uplifting-pads.mp3",
-    "r3": "r3-lofi-morning.mp3",
-    "r4": "r4-light-pulse.mp3",
-    "r5": "r5-gamelan-ambient.mp3",
+    "r1": "momentum.mp3",
+    "r2": "reflect.mp3",
+    "r3": "calm.mp3",
+    "r4": "pulse.mp3",
+    "r5": "rise.mp3",
 }
 
 def load_audio(mood: str, duration: float):
