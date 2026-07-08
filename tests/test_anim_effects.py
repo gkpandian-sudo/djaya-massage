@@ -125,3 +125,54 @@ def test_composite_alpha_negative_safe():
     overlay = np.full((4, 4, 4), 255, dtype=np.uint8)
     result = A.composite(base, overlay, 0, 0, alpha=-0.1)
     assert (result == 100).all(), "negative alpha should preserve base"
+
+
+# ── New primitives (Task 2) ───────────────────────────────────────────────────
+
+def test_line_wipe_output_shape():
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    result = A.line_wipe(frame, x=10, y=50, h=6, w_final=80, progress=0.5)
+    assert result.shape == (100, 100, 3)
+
+def test_line_wipe_partial_draws_gold():
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    result = A.line_wipe(frame, x=10, y=50, h=6, w_final=80, progress=0.5)
+    assert result[50, 10, 0] == 193  # GOLD red channel
+
+def test_line_wipe_progress_zero_draws_nothing():
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    result = A.line_wipe(frame, x=10, y=50, h=6, w_final=80, progress=0.0)
+    assert result[50, 10, 0] == 0   # no bar drawn
+
+def test_slide_in_x_returns_int():
+    arr = np.ones((20, 60, 4), dtype=np.uint8) * 200
+    result = A.slide_in_x(arr, x_from=20, x_to=0, progress=0.5)
+    assert isinstance(result, int)
+
+def test_slide_in_x_at_zero_progress():
+    arr = np.ones((20, 60, 4), dtype=np.uint8) * 200
+    result = A.slide_in_x(arr, x_from=50, x_to=10, progress=0.0)
+    assert result == 50
+
+def test_slide_in_x_at_full_progress():
+    arr = np.ones((20, 60, 4), dtype=np.uint8) * 200
+    result = A.slide_in_x(arr, x_from=50, x_to=10, progress=1.0)
+    assert result == 10
+
+def test_scale_overlay_shrinks():
+    arr = np.ones((100, 80, 4), dtype=np.uint8) * 255
+    out = A.scale_overlay(arr, s=0.5)
+    assert out.shape[0] == 50 and out.shape[1] == 40
+
+def test_scale_overlay_grows():
+    arr = np.ones((50, 40, 4), dtype=np.uint8) * 255
+    out = A.scale_overlay(arr, s=2.0)
+    assert out.shape[0] == 100 and out.shape[1] == 80
+
+def test_count_up_price_returns_rgba():
+    frame = A.count_up_price(220000, progress=0.0)
+    assert frame.ndim == 3 and frame.shape[2] == 4
+
+def test_count_up_price_full_returns_rgba():
+    frame = A.count_up_price(220000, progress=1.0)
+    assert frame.ndim == 3 and frame.shape[2] == 4

@@ -248,6 +248,58 @@ def paint_scrim(
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
+def line_wipe(
+    frame: np.ndarray,
+    x: int,
+    y: int,
+    h: int,
+    w_final: int,
+    progress: float,
+    color: Tuple = GOLD,
+) -> np.ndarray:
+    """Draw a horizontal color bar that grows left→right. progress 0→1."""
+    out = frame.copy()
+    w = max(0, int(w_final * ease_out_cubic(min(max(progress, 0.0), 1.0))))
+    if w > 0:
+        H_f, W_f = out.shape[:2]
+        y0, y1 = max(0, y), min(H_f, y + h)
+        x0, x1 = max(0, x), min(W_f, x + w)
+        out[y0:y1, x0:x1] = np.array(color, dtype=np.uint8)
+    return out
+
+
+def slide_in_x(
+    overlay: np.ndarray,
+    x_from: int,
+    x_to: int,
+    progress: float,
+    easing=None,
+) -> int:
+    """Return the current x-offset for a slide-in animation.
+    Use result as x in: base = composite(base, overlay, slide_in_x(...), y, alpha)"""
+    if easing is None:
+        easing = ease_out_cubic
+    p = easing(min(max(progress, 0.0), 1.0))
+    return int(x_from + (x_to - x_from) * p)
+
+
+def scale_overlay(overlay: np.ndarray, s: float) -> np.ndarray:
+    """Resize an RGBA overlay by scale factor s (PIL BILINEAR). s=1.0 → no change."""
+    s = max(0.01, s)
+    oh, ow = overlay.shape[:2]
+    nh, nw = max(1, int(oh * s)), max(1, int(ow * s))
+    img = Image.fromarray(overlay, "RGBA")
+    return np.array(img.resize((nw, nh), Image.BILINEAR))
+
+
+def count_up_price(value: int, progress: float, font_size: int = 44) -> np.ndarray:
+    """Render 'Rp X.XXX' with value interpolated from 0→value at progress 0→1.
+    Returns RGBA array."""
+    current = int(value * ease_out_cubic(min(max(progress, 0.0), 1.0)))
+    formatted = f"Rp {current:,.0f}".replace(",", ".")
+    return render_text_block(formatted, "segoeuib.ttf", font_size, WHITE, max_width=952)
+
+
 def render_text_shadowed(
     text: str,
     font_name: str = "georgia.ttf",
