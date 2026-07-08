@@ -227,22 +227,29 @@ def build_r2(content: dict, lang: str = "id", photos: list = None, duration: flo
     quote_block_h = source_arr.shape[0] + 52 + quote_arr.shape[0] + 30 + name_arr.shape[0] + 40
 
     def make_frame(t: float) -> np.ndarray:
-        if t < 14.0:
+        if t < duration - 4.0:
             base = bg_arr.copy()
-            # Stronger gradient — covers top 80% of frame for mood
             base = dark_gradient(base, int(H * 0.08), BLACK, 0.72)
             base = top_vignette(base, 180, 0.40)
 
             star_y = int(H * 0.18)
-            # Scrim behind stars + full quote block
             base = paint_scrim(base, star_y - 24, 80 + quote_block_h, alpha=0.52, feather=32)
 
-            # Stars drop in one-by-one with 0.3s stagger
+            # Stars drop one-by-one with ease_out_back — composite() now clamps alpha safely
             for i in range(rating):
                 drop_start = i * 0.28
                 a = fade_alpha(drop_start, 0.35, t, ease_out_back)
-                drop_offset = int((1 - ease_out_back(min((t - drop_start) / 0.35, 1.0))) * 80) if t > drop_start else 80
+                drop_offset = int((1 - ease_out_back(min(max((t - drop_start) / 0.35, 0.0), 1.0))) * 80) if t > drop_start else 80
                 base = composite(base, star_single, MARGIN + i * (sw + 4), star_y - drop_offset, a)
+
+            # Star shimmer sweep at t=2.2 — semi-transparent white band crosses the star row
+            if 2.2 < t < 2.6:
+                sweep_p = (t - 2.2) / 0.4
+                sweep_x = int(MARGIN + (rating * (sw + 4) + 60) * sweep_p)
+                shimmer = np.zeros((80, 60, 4), dtype=np.uint8)
+                shimmer[:, :, :3] = 255
+                shimmer[:, :, 3] = 64   # α=25%
+                base = composite(base, shimmer, sweep_x - 30, star_y - 20, 1.0)
 
             src_a   = fade_alpha(1.6, 0.5, t)
             quote_a = fade_alpha(2.4, 1.0, t)
@@ -251,19 +258,23 @@ def build_r2(content: dict, lang: str = "id", photos: list = None, duration: flo
             cta_a   = fade_alpha(12.5, 0.7, t)
 
             qy = star_y + 96
-            base = composite(base, source_arr, MARGIN, qy,                                      src_a)
-            base = composite(base, quote_arr,  MARGIN, qy + source_arr.shape[0] + 12,           quote_a)
+            base = composite(base, source_arr, MARGIN, qy, src_a)
+            base = composite(base, quote_arr,  MARGIN, qy + source_arr.shape[0] + 12, quote_a)
             base = composite(base, name_arr,   MARGIN, qy + source_arr.shape[0] + 12 + quote_arr.shape[0] + 24, name_a)
 
-            # Bottom scrim for badge+CTA
             base = paint_scrim(base, H - 310, 260, alpha=0.55, feather=28)
-            base = composite(base, badge_arr,  MARGIN, H - 292, badge_a)
-            base = composite(base, cta_arr,    MARGIN, H - 232, cta_a)
+            base = composite(base, badge_arr, MARGIN, H - 292, badge_a)
+
+            # CTA slide-up: y offset 24→0 while fading in
+            if cta_a > 0.0:
+                cta_y_offset = int(24 * (1.0 - ease_out_cubic(min((t - 12.5) / 0.7, 1.0))))
+                base = composite(base, cta_arr, MARGIN, H - 232 + cta_y_offset, cta_a)
+
             base = draw_logo(base, 36, 44, size=80, alpha=fade_alpha(0.5, 0.5, t))
             return base
 
-        # End card (14–18s)
-        pt = t - 14.0
+        # End card (last 4s)
+        pt = t - (duration - 4.0)
         a  = ease_out_cubic(min(pt / 0.8, 1.0))
         return np.clip(bg_arr.astype(np.float32) * (1 - a) + end_frame.astype(np.float32) * a, 0, 255).astype(np.uint8)
 
