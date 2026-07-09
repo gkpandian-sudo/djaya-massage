@@ -547,57 +547,73 @@ def build_r5(content: dict, lang: str = "id", photos: list = None, duration: flo
     l4_arr = render_text_block(line4, "segoeui.ttf",  28, (120,96,68),  max_width=952)
     end_frame = end_card_frame()
 
-    LB_H = 100  # cinematic letterbox height each side
+    LB_FINAL = 100   # final letterbox height (pixels each side)
 
     def make_frame(t: float) -> np.ndarray:
         if t < 13.0:
             p0 = _pick(paths, 0)
             p1 = _pick(paths, 1) or p0
-            p2 = _pick(paths, 2) or p0
+            # p2 unused here but kept for symmetry
+
+            # Breathing zoom: ±0.012 sinusoidal, 6.5s period, inhale peak at t=4.5
+            breathe_phase = 2 * math.pi * (t / 6.5) - (2 * math.pi * 4.5 / 6.5)
+            breathe_mod   = 0.012 * math.sin(breathe_phase)
 
             if p0:
-                s0 = _load_src(str(p0), REEL_SIZE)
-                f0 = ken_burns_frame(s0, t, 6.5, 1.0, 1.06, drift=(0, -18))
-                f0 = warm_tint(f0, 0.14)
+                s0   = _load_src(str(p0), REEL_SIZE)
+                zoom = 1.00 + (1.06 - 1.00) * ease_in_out_sine(min(t / 6.5, 1.0)) + breathe_mod
+                # Pass zoom as both zoom_start and zoom_end (we control zoom via the variable)
+                f0   = ken_burns_frame(s0, 0.0, 1.0, zoom, zoom, drift=(0, -18))
+                f0   = warm_tint(f0, 0.14)
             else:
                 f0 = _solid((20, 14, 8))
 
-            # Cross-dissolve to photo 2 at 6s
+            # Cross-dissolve to photo 2 starting at t=5.5
             if t > 5.5 and p1 and str(p1) != str(p0):
                 s1    = _load_src(str(p1), REEL_SIZE)
                 blend = ease_in_out_sine(min((t - 5.5) / 1.2, 1.0))
-                f1    = ken_burns_frame(s1, t - 5.5, 6.5, 1.06, 1.0, drift=(10, 0))
+                f1    = ken_burns_frame(s1, t - 5.5, 6.5, 1.06, 1.00, drift=(10, 0))
                 f1    = warm_tint(f1, 0.16)
-                base  = np.clip(f0.astype(np.float32) * (1 - blend) + f1.astype(np.float32) * blend, 0, 255).astype(np.uint8)
+                base  = np.clip(
+                    f0.astype(np.float32) * (1 - blend) + f1.astype(np.float32) * blend,
+                    0, 255,
+                ).astype(np.uint8)
             else:
                 base = f0
 
-            # Cinematic tint — dark but not crushing
             base = dark_gradient(base, 0, BLACK, 0.50)
             base = top_vignette(base, 240, 0.42)
 
-            # Letterbox
-            base[:LB_H]  = np.array(BLACK)
-            base[-LB_H:] = np.array(BLACK)
+            # Animated letterbox: bars grow from 0 → LB_FINAL over 0.8s
+            lb_h = int(LB_FINAL * ease_out_cubic(min(t / 0.8, 1.0)))
+            if lb_h > 0:
+                base[:lb_h]  = np.array(BLACK)
+                base[-lb_h:] = np.array(BLACK)
 
             # Centre text with scrim
-            cy = H // 2 - 80
+            cy   = H // 2 - 80
             l1_a = fade_alpha(4.5, 1.0, t) * (1 - fade_alpha(8.0, 0.8, t))
             l2_a = fade_alpha(8.0, 1.0, t) * (1 - fade_alpha(11.5, 0.8, t))
             if l1_a > 0.01 or l2_a > 0.01:
                 base = paint_scrim(base, cy - 20, 90 + max(l1_arr.shape[0], l2_arr.shape[0]) + 40, alpha=0.42, feather=36)
-            base = composite(base, l1_arr, MARGIN, cy, l1_a)
+            base = composite(base, l1_arr, MARGIN, cy,      l1_a)
             base = composite(base, l2_arr, MARGIN, cy + 90, l2_a)
-            base = draw_logo(base, 36, LB_H + 12, size=80, alpha=fade_alpha(0.5, 0.8, t))
+            base = draw_logo(base, 36, lb_h + 12, size=80, alpha=fade_alpha(0.5, 0.8, t))
             return base
 
-        # End card (13–15s) with CTA lines
+        # End card (13–15s) with gold divider wipe
         pt    = t - 13.0
         a     = ease_out_cubic(min(pt / 0.8, 1.0))
         frame = np.clip(
             _solid(BLACK).astype(np.float32) * (1 - a) + end_frame.astype(np.float32) * a,
             0, 255,
         ).astype(np.uint8)
+
+        # Gold divider wipes in over 0.5s starting at t=13.2
+        if t > 13.2:
+            divider_p = min((t - 13.2) / 0.5, 1.0)
+            frame = line_wipe(frame, x=MARGIN, y=H // 2 - 6, h=4, w_final=952 - MARGIN, progress=divider_p, color=GOLD)
+
         l3_a = fade_alpha(13.4, 0.6, t)
         l4_a = fade_alpha(13.7, 0.6, t)
         frame = composite(frame, l3_arr, MARGIN, int(H * 0.52) + 50, l3_a)
