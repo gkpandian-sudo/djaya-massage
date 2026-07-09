@@ -156,3 +156,172 @@ def booking_reminder(business: dict, lang: str = "id") -> str:
         f"{WA_LINK}\n\n"
         f"{IG_HANDLE} · Penuin Centre, Lubuk Baja, Batam"
     )
+
+
+# ── Hashtag sets ─────────────────────────────────────────────────────────────
+HASHTAG_SETS = {
+    "lokal": [
+        "#pijatjakarta", "#pijatrefleksi", "#reflexology", "#pijattradisional",
+        "#jasapijat", "#pijatenak", "#pijatmurah",
+    ],
+    "sg": [
+        "#singaporemassage", "#massagesg", "#relaxsg", "#sgwellness",
+        "#chinatownsg", "#tanjongpagar", "#singaporelife",
+    ],
+    "wellness": [
+        "#massage", "#wellness", "#relaxation", "#selfcare",
+        "#reflexologytherapy", "#bodycare", "#holistichealth",
+    ],
+}
+
+_ALWAYS = ["#djayamassage", "#djayamassagesg"]
+
+
+def _tags(lang: str, extra: list | None = None) -> str:
+    """Build a hashtag string: always + lang-appropriate set + wellness + optional extras."""
+    tags = list(_ALWAYS)
+    if lang == "id":
+        tags += HASHTAG_SETS["lokal"]
+    else:
+        tags += HASHTAG_SETS["sg"]
+    tags += HASHTAG_SETS["wellness"]
+    if extra:
+        tags += extra
+    return " ".join(tags)
+
+
+# ── Hook-formula caption functions ────────────────────────────────────────────
+
+def caption_r1(content: dict, lang: str) -> str:
+    """Service spotlight — pain-point hook."""
+    t = content.get("treatment", {})
+    name = t.get("name", "")
+    desc = t.get("desc", "")
+    prices = t.get("prices", [])
+    price_str = ""
+    if prices:
+        p = prices[0]
+        price_str = f"Rp {p['price']:,.0f}".replace(",", ".") + f" / {p['duration']} min"
+
+    if lang == "id":
+        body = (
+            f"Capek setelah seharian kerja? 😩\n\n"
+            f"✨ {name} — {desc}\n\n"
+            f"💆 Mulai dari {price_str}\n"
+            f"📍 1 Keong Saik Rd, Singapore\n"
+            f"📞 +65 6222 5885\n\n"
+        )
+    else:
+        body = (
+            f"Feeling drained after a long day? 😩\n\n"
+            f"✨ {name} — {desc}\n\n"
+            f"💆 From {price_str}\n"
+            f"📍 1 Keong Saik Rd, Singapore\n"
+            f"📞 +65 6222 5885\n\n"
+        )
+    return body + _tags(lang, extra=["#javanesemasage", "#traditionalmassage"])
+
+
+def caption_r2(content: dict, lang: str) -> str:
+    """Testimonial reel — social proof hook."""
+    r = content.get("review", {})
+    name = r.get("name", "")
+    text = r.get("text", "")
+    stars = "⭐" * min(int(r.get("rating", 5)), 5)
+
+    if lang == "id":
+        body = (
+            f"Kata mereka tentang Djaya... 🤍\n\n"
+            f"{stars}\n"
+            f'"{text}"\n'
+            f"— {name}\n\n"
+            f"📍 1 Keong Saik Rd, Singapore\n"
+            f"📞 +65 6222 5885\n\n"
+        )
+    else:
+        body = (
+            f"Here's what our guests say... 🤍\n\n"
+            f"{stars}\n"
+            f'"{text}"\n'
+            f"— {name}\n\n"
+            f"📍 1 Keong Saik Rd, Singapore\n"
+            f"📞 +65 6222 5885\n\n"
+        )
+    return body + _tags(lang, extra=["#testimonial", "#massagereview"])
+
+
+def caption_r3(content: dict, lang: str) -> str:
+    """Ambiance/BTS reel — curiosity hook."""
+    if lang == "id":
+        body = (
+            "Di balik layar Djaya Massage 🎬\n\n"
+            "Suasana yang tenang, sentuhan yang tulus.\n"
+            "Begini kami mempersiapkan pengalaman terbaik untuk kamu.\n\n"
+            "📍 1 Keong Saik Rd, #01-01, Singapore 089109\n"
+            "⏰ Buka setiap hari 10.00 – 22.00\n"
+            "📞 +65 6222 5885\n\n"
+        )
+    else:
+        body = (
+            "A peek behind the scenes at Djaya Massage 🎬\n\n"
+            "Calm space. Genuine care.\n"
+            "This is how we prepare the perfect experience for you.\n\n"
+            "📍 1 Keong Saik Rd, #01-01, Singapore 089109\n"
+            "⏰ Open daily 10am – 10pm\n"
+            "📞 +65 6222 5885\n\n"
+        )
+    return body + _tags(lang, extra=["#behindthescenes", "#spavibe"])
+
+
+def caption_r4(content: dict, lang: str) -> str:
+    """Promo reel — urgency hook."""
+    p = content.get("promo", {})
+    headline = p.get("headline", "Special Offer")
+    sub = p.get("sub", "")
+    cta = p.get("cta", "Book now")
+
+    if lang == "id":
+        body = (
+            f"Jangan sampai ketinggalan! ⏳\n\n"
+            f"🎁 {headline}\n"
+            f"{sub}\n\n"
+            f"👉 {cta} sekarang — DM atau telp +65 6222 5885\n"
+            f"📍 1 Keong Saik Rd, Singapore\n\n"
+        )
+    else:
+        body = (
+            f"Don't miss out! ⏳\n\n"
+            f"🎁 {headline}\n"
+            f"{sub}\n\n"
+            f"👉 {cta} — DM or call +65 6222 5885\n"
+            f"📍 1 Keong Saik Rd, Singapore\n\n"
+        )
+    return body + _tags(lang, extra=["#massagepromo", "#spaoffer"])
+
+
+def caption_r5(content: dict, lang: str) -> str:
+    """Location/brand reel — curiosity + CTA hook."""
+    b = content.get("business", {})
+    name = b.get("name", "Djaya Massage")
+    hours = b.get("hours", "10am – 10pm")
+    address = b.get("address", "1 Keong Saik Rd")
+
+    if lang == "id":
+        body = (
+            f"Tau nggak, ada spa mewah di jantung Singapore? 🇸🇬\n\n"
+            f"✨ {name}\n"
+            f"📍 {address}, Singapore\n"
+            f"⏰ {hours} setiap hari\n"
+            f"📞 +65 6222 5885\n\n"
+            f"Booking via DM atau telepon langsung 👆\n\n"
+        )
+    else:
+        body = (
+            f"Did you know there's a hidden gem spa in the heart of Singapore? 🇸🇬\n\n"
+            f"✨ {name}\n"
+            f"📍 {address}, Singapore\n"
+            f"⏰ Open daily {hours}\n"
+            f"📞 +65 6222 5885\n\n"
+            f"Book via DM or give us a call 👆\n\n"
+        )
+    return body + _tags(lang, extra=["#singaporespa", "#hiddengem"])

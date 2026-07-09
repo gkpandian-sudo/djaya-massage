@@ -145,3 +145,79 @@ def test_booking_reminder_id_contains_hours_and_wa():
 def test_booking_reminder_en_contains_wa():
     result = C.booking_reminder(DATA.BUSINESS, lang="en")
     assert WA_LINK in result
+
+
+# ── Task 10: hashtag sets + hook-formula captions ────────────────────────────
+import importlib
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+import captions as CAP
+
+def test_hashtag_sets_has_three_keys():
+    assert "lokal" in CAP.HASHTAG_SETS
+    assert "sg" in CAP.HASHTAG_SETS
+    assert "wellness" in CAP.HASHTAG_SETS
+
+def test_tags_returns_string():
+    result = CAP._tags("id")
+    assert isinstance(result, str)
+    assert "#" in result
+
+def test_tags_extra_appended():
+    result = CAP._tags("en", extra=["#test123"])
+    assert "#test123" in result
+
+def test_caption_r1_id_contains_hook():
+    content = {
+        "treatment": {
+            "name": "Pijat Refleksi",
+            "category": "Reflexology",
+            "desc": "Relaksasi mendalam",
+            "prices": [{"duration": 60, "price": 150000}],
+        }
+    }
+    cap = CAP.caption_r1(content, "id")
+    assert isinstance(cap, str) and len(cap) > 30
+
+def test_caption_r2_en_contains_quote_markers():
+    content = {
+        "review": {
+            "name": "Alice",
+            "rating": 5,
+            "text": "Absolutely amazing massage.",
+            "lang": "en",
+        }
+    }
+    cap = CAP.caption_r2(content, "en")
+    assert isinstance(cap, str) and len(cap) > 20
+
+def test_caption_r3_both_langs():
+    cap_id = CAP.caption_r3({}, "id")
+    cap_en = CAP.caption_r3({}, "en")
+    assert isinstance(cap_id, str) and isinstance(cap_en, str)
+    assert cap_id != cap_en
+
+def test_caption_r4_contains_cta():
+    content = {"promo": {"headline": "FREE Foot Scrub", "sub": "This week only", "cta": "Book now"}}
+    cap = CAP.caption_r4(content, "en")
+    assert isinstance(cap, str)
+    assert len(cap) > 20
+
+def test_caption_r5_contains_address():
+    content = {"business": {"name": "Djaya", "hours": "10am-10pm", "address": "1 Keong Saik Rd"}}
+    cap = CAP.caption_r5(content, "en")
+    assert "Keong Saik" in cap or "Keong" in cap or "Djaya" in cap
+
+def test_all_captions_have_hashtags():
+    content_map = {
+        "r1": {"treatment": {"name": "T", "category": "C", "desc": "D", "prices": [{"duration": 60, "price": 100000}]}},
+        "r2": {"review": {"name": "B", "rating": 5, "text": "Great", "lang": "id"}},
+        "r3": {},
+        "r4": {"promo": {"headline": "H", "sub": "S", "cta": "CTA"}},
+        "r5": {"business": {"name": "Djaya", "hours": "10am-10pm", "address": "1 Keong Saik"}},
+    }
+    fns = [CAP.caption_r1, CAP.caption_r2, CAP.caption_r3, CAP.caption_r4, CAP.caption_r5]
+    keys = ["r1", "r2", "r3", "r4", "r5"]
+    for fn, key in zip(fns, keys):
+        cap = fn(content_map[key], "id")
+        assert "#" in cap, f"{key} caption missing hashtags"
