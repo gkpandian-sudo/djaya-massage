@@ -437,57 +437,76 @@ def build_r4(content: dict, lang: str = "id", photos: list = None,
     def make_frame(t: float) -> np.ndarray:
         if t < 10.0:
             if bg_src_arr is not None:
-                # Photo bg with teal color overlay for brand identity
                 base = ken_burns_frame(bg_src_arr, t, 10.0, 1.0, 1.05, drift=(0, -8))
                 base = np.clip(
                     base.astype(np.float32) * 0.38 + np.array(TEAL, dtype=np.float32) * 0.62,
-                    0, 255
+                    0, 255,
                 ).astype(np.uint8)
             else:
                 base = bg_base.copy()
 
             base = draw_logo(base, 36, 44, size=80, alpha=0.9)
-            badge_y = int(H * 0.22) if t >= 3.0 else int(H * 0.28)
 
-            # Phase A (0–3s): badge fades in
+            # Badge y: animated move from 0.28H → 0.22H over 0.4s starting at t=3.0
             if t < 3.0:
-                alpha_a = ease_out_cubic(min(t / 0.65, 1.0))
-                bx = int(W / 2 - badge_arr.shape[1] // 2)
-                base = paint_scrim(base, badge_y - 20, badge_arr.shape[0] + off_arr.shape[0] + 40, alpha=0.30)
-                base = composite(base, badge_arr, bx, badge_y, alpha_a)
-                base = composite(base, off_arr,   int(W / 2 - off_arr.shape[1] // 2), badge_y + badge_arr.shape[0], alpha_a)
+                badge_y = int(H * 0.28)
+            elif t < 3.4:
+                move_p  = ease_in_out_sine((t - 3.0) / 0.4)
+                badge_y = int(H * 0.28 + (H * 0.22 - H * 0.28) * move_p)
+            else:
+                badge_y = int(H * 0.22)
 
-            # Phase B (3–7s): headline + terms slide in
-            elif t < 7.0:
-                pt  = t - 3.0
-                bx  = int(W / 2 - badge_arr.shape[1] // 2)
+            # Phase A (0–3s): TRUE scale-in via scale_overlay with ease_out_back bounce
+            if t < 3.0:
+                s       = 0.60 + 0.40 * ease_out_back(min(t / 0.65, 1.0))
+                alpha_a = ease_out_cubic(min(t / 0.30, 1.0))
+                scaled_badge = scale_overlay(badge_arr, s)
+                scaled_off   = scale_overlay(off_arr,   s)
+                # Center the scaled overlays on screen
+                bx = int(W / 2 - scaled_badge.shape[1] // 2)
+                ox = int(W / 2 - scaled_off.shape[1]   // 2)
+                by = badge_y - (scaled_badge.shape[0] - badge_arr.shape[0]) // 2
+                base = paint_scrim(base, by - 20, scaled_badge.shape[0] + scaled_off.shape[0] + 40, alpha=0.30)
+                base = composite(base, scaled_badge, bx, by,                              alpha_a)
+                base = composite(base, scaled_off,   ox, by + scaled_badge.shape[0] - 4, alpha_a)
+
+            # Phase B & C (3s+): full-size badge at animated position
+            else:
+                bx = int(W / 2 - badge_arr.shape[1] // 2)
                 base = paint_scrim(base, badge_y - 16, badge_arr.shape[0] + off_arr.shape[0] + 32, alpha=0.32)
                 base = composite(base, badge_arr, bx, badge_y, 1.0)
                 base = composite(base, off_arr,   int(W / 2 - off_arr.shape[1] // 2), badge_y + badge_arr.shape[0], 1.0)
+
+            # Phase B (3–7s): headline + sub copy slide in
+            if 3.0 <= t < 7.0:
+                pt  = t - 3.0
                 h_a  = fade_alpha(0.2, 0.6, pt)
                 s1_a = fade_alpha(0.7, 0.6, pt)
                 s2_a = fade_alpha(1.3, 0.6, pt) if s2_arr is not None else 0.0
                 ty   = int(H * 0.60)
+                h_x  = slide_in_x(h_arr, x_from=28, x_to=MARGIN, progress=(pt - 0.2) / 0.6 if pt > 0.2 else 0.0)
                 scrim_h = h_arr.shape[0] + s1_arr.shape[0] + (s2_arr.shape[0] + 16 if s2_arr is not None else 0) + 48
                 base = paint_scrim(base, ty - 16, scrim_h, alpha=0.52, feather=24)
-                base = composite(base, h_arr,  MARGIN, ty, h_a)
+                base = composite(base, h_arr,  h_x,   ty, h_a)
                 base = composite(base, s1_arr, MARGIN, ty + h_arr.shape[0] + 12, s1_a)
                 if s2_arr is not None:
                     base = composite(base, s2_arr, MARGIN, ty + h_arr.shape[0] + s1_arr.shape[0] + 20, s2_a)
 
-            # Phase C (7–10s): countdown bar + CTA
-            else:
-                pt  = t - 7.0
-                bx  = int(W / 2 - badge_arr.shape[1] // 2)
-                base = paint_scrim(base, badge_y - 16, badge_arr.shape[0] + off_arr.shape[0] + 32, alpha=0.32)
-                base = composite(base, badge_arr, bx, badge_y, 1.0)
-                base = composite(base, off_arr,   int(W / 2 - off_arr.shape[1] // 2), badge_y + badge_arr.shape[0], 1.0)
+            # Phase C (7–10s): countdown bar + CTA; bar flashes in final 1s
+            if t >= 7.0:
+                pt    = t - 7.0
                 bar_w = W - MARGIN * 2
                 bar_y = int(H * 0.65)
                 fill  = max(0, int(bar_w * (1.0 - pt / 3.0)))
-                base = paint_scrim(base, bar_y - 16, terms_arr.shape[0] + 100, alpha=0.54, feather=20)
+                base  = paint_scrim(base, bar_y - 16, terms_arr.shape[0] + 100, alpha=0.54, feather=20)
+                # Gold track
                 base[bar_y : bar_y + 12, MARGIN : MARGIN + bar_w] = np.array(GOLD)
-                base[bar_y : bar_y + 12, MARGIN : MARGIN + fill]  = np.array(WHITE)
+                # Fill color: WHITE normally, flashes to GOLD_LIGHT at 2Hz in final 1s
+                fill_color = WHITE
+                if pt > 2.0:
+                    flash = int((pt - 2.0) * 2) % 2  # alternates 0/1
+                    fill_color = (230, 190, 80) if flash else WHITE
+                base[bar_y : bar_y + 12, MARGIN : MARGIN + fill] = np.array(fill_color)
                 t_a    = fade_alpha(0.3, 0.5, pt)
                 days_a = fade_alpha(0.6, 0.5, pt) if days_arr is not None else 0.0
                 base = composite(base, terms_arr, MARGIN, bar_y + 22, t_a)
