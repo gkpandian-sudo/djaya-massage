@@ -52,7 +52,8 @@ def resolve_post_type() -> str:
     override = os.environ.get("POST_TYPE", "").strip()
     if override and override in _VALID_TYPES:
         return override
-    return ROT.WEEKDAY_TO_POST_TYPE[datetime.now(timezone.utc).weekday()]
+    entry = ROT.get_schedule_entry(ROTATION_PATH)
+    return entry["template"]
 
 
 def _all_treatments() -> list:

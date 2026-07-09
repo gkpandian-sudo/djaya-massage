@@ -71,8 +71,8 @@ def resolve_template() -> str:
     override = os.environ.get("REEL_TEMPLATE", "").strip()
     if override and override in GRA.TEMPLATE_DEFAULTS:
         return override
-    weekday = datetime.now(timezone.utc).weekday()
-    return WEEKDAY_TO_TEMPLATE.get(weekday, "r5")
+    entry = ROT.get_schedule_entry(ROTATION_PATH)
+    return entry.get("template", "r5")
 
 
 def _build_caption(template: str) -> str:
@@ -159,6 +159,11 @@ def run() -> None:
         testimonial=(template == "r2"),
     )
     ROT.commit_rotation(ROTATION_PATH)
+
+    # Advance week index every Sunday
+    if datetime.now(timezone.utc).weekday() == 6:
+        ROT.increment_week(ROTATION_PATH)
+        ROT.commit_rotation(ROTATION_PATH)
 
     _wait_for_cdn(cdn_url, timeout=120)
 

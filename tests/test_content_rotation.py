@@ -75,3 +75,42 @@ def test_increment_rotation_does_not_touch_menu_when_only_testimonial(tmp_path):
     data = json.loads(open(p).read())
     assert data["menu_index"] == 2
     assert data["testimonial_index"] == 1
+
+
+# ── 4-week rotation (Task 9) ──────────────────────────────────────────────────
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+import content_rotation as ROT_T9
+
+def test_rotation_calendar_has_4_weeks():
+    assert len(ROT_T9.ROTATION_CALENDAR) == 4
+
+def test_rotation_calendar_each_week_has_7_days():
+    for w in ROT_T9.ROTATION_CALENDAR:
+        assert len(w) == 7
+
+def test_get_week_index_reads_json(tmp_path):
+    rjson = tmp_path / "rotation.json"
+    rjson.write_text('{"menu_index":0,"testimonial_index":0,"week_index":2,"photo_log":[]}')
+    assert ROT_T9.get_week_index(str(rjson)) == 2
+
+def test_increment_week_advances(tmp_path):
+    rjson = tmp_path / "rotation.json"
+    rjson.write_text('{"menu_index":0,"testimonial_index":0,"week_index":0,"photo_log":[]}')
+    ROT_T9.increment_week(str(rjson))
+    assert ROT_T9.get_week_index(str(rjson)) == 1
+
+def test_increment_week_wraps_at_4(tmp_path):
+    rjson = tmp_path / "rotation.json"
+    rjson.write_text('{"menu_index":0,"testimonial_index":0,"week_index":3,"photo_log":[]}')
+    ROT_T9.increment_week(str(rjson))
+    assert ROT_T9.get_week_index(str(rjson)) == 0
+
+def test_get_schedule_entry_returns_dict(tmp_path):
+    rjson = tmp_path / "rotation.json"
+    rjson.write_text('{"menu_index":0,"testimonial_index":0,"week_index":0,"photo_log":[]}')
+    entry = ROT_T9.get_schedule_entry(str(rjson), weekday=0)
+    assert "content_type" in entry
+    assert "template" in entry
+    assert "lang" in entry
+    assert "photo_hint" in entry
