@@ -161,8 +161,8 @@ def booking_reminder(business: dict, lang: str = "id") -> str:
 # ── Hashtag sets ─────────────────────────────────────────────────────────────
 HASHTAG_SETS = {
     "lokal": [
-        "#pijatjakarta", "#pijatrefleksi", "#reflexology", "#pijattradisional",
-        "#jasapijat", "#pijatenak", "#pijatmurah",
+        "#pijatbatam", "#pijatrefleksi", "#reflexology", "#pijattradisional",
+        "#jasapijatbatam", "#wisatabalatam", "#batamkota",
     ],
     "sg": [
         "#singaporemassage", "#massagesg", "#relaxsg", "#sgwellness",
@@ -195,8 +195,10 @@ def _tags(lang: str, extra: list | None = None) -> str:
 def caption_r1(content: dict, lang: str) -> str:
     """Service spotlight — pain-point hook."""
     t = content.get("treatment", {})
-    name = t.get("name", "")
-    desc = t.get("desc", "")
+    name_raw = t.get("name", "")
+    desc_raw = t.get("desc", "")
+    name = name_raw.get(lang, "") if isinstance(name_raw, dict) else name_raw
+    desc = desc_raw.get(lang, "") if isinstance(desc_raw, dict) else desc_raw
     prices = t.get("prices", [])
     price_str = ""
     if prices:
@@ -208,18 +210,18 @@ def caption_r1(content: dict, lang: str) -> str:
             f"Capek setelah seharian kerja? 😩\n\n"
             f"✨ {name} — {desc}\n\n"
             f"💆 Mulai dari {price_str}\n"
-            f"📍 1 Keong Saik Rd, Singapore\n"
-            f"📞 +65 6222 5885\n\n"
+            f"📍 Penuin Centre, Lubuk Baja, Batam\n"
+            f"Chat WhatsApp: {WA_LINK}\n\n"
         )
     else:
         body = (
             f"Feeling drained after a long day? 😩\n\n"
             f"✨ {name} — {desc}\n\n"
             f"💆 From {price_str}\n"
-            f"📍 1 Keong Saik Rd, Singapore\n"
-            f"📞 +65 6222 5885\n\n"
+            f"📍 Penuin Centre, Lubuk Baja, Batam\n"
+            f"Chat on WhatsApp: {WA_LINK}\n\n"
         )
-    return body + _tags(lang, extra=["#javanesemasage", "#traditionalmassage"])
+    return body + _tags(lang, extra=["#javanesemassage", "#traditionalmassage"])
 
 
 def caption_r2(content: dict, lang: str) -> str:
@@ -235,8 +237,8 @@ def caption_r2(content: dict, lang: str) -> str:
             f"{stars}\n"
             f'"{text}"\n'
             f"— {name}\n\n"
-            f"📍 1 Keong Saik Rd, Singapore\n"
-            f"📞 +65 6222 5885\n\n"
+            f"📍 Penuin Centre, Lubuk Baja, Batam\n"
+            f"Chat WhatsApp: {WA_LINK}\n\n"
         )
     else:
         body = (
@@ -244,8 +246,8 @@ def caption_r2(content: dict, lang: str) -> str:
             f"{stars}\n"
             f'"{text}"\n'
             f"— {name}\n\n"
-            f"📍 1 Keong Saik Rd, Singapore\n"
-            f"📞 +65 6222 5885\n\n"
+            f"📍 Penuin Centre, Lubuk Baja, Batam\n"
+            f"Chat on WhatsApp: {WA_LINK}\n\n"
         )
     return body + _tags(lang, extra=["#testimonial", "#massagereview"])
 
@@ -257,18 +259,18 @@ def caption_r3(content: dict, lang: str) -> str:
             "Di balik layar Djaya Massage 🎬\n\n"
             "Suasana yang tenang, sentuhan yang tulus.\n"
             "Begini kami mempersiapkan pengalaman terbaik untuk kamu.\n\n"
-            "📍 1 Keong Saik Rd, #01-01, Singapore 089109\n"
-            "⏰ Buka setiap hari 10.00 – 22.00\n"
-            "📞 +65 6222 5885\n\n"
+            "📍 Penuin Centre, Lubuk Baja, Batam\n"
+            f"⏰ Buka setiap hari 10.00 – 22.00\n"
+            f"Chat WhatsApp: {WA_LINK}\n\n"
         )
     else:
         body = (
             "A peek behind the scenes at Djaya Massage 🎬\n\n"
             "Calm space. Genuine care.\n"
             "This is how we prepare the perfect experience for you.\n\n"
-            "📍 1 Keong Saik Rd, #01-01, Singapore 089109\n"
-            "⏰ Open daily 10am – 10pm\n"
-            "📞 +65 6222 5885\n\n"
+            "📍 Penuin Centre, Lubuk Baja, Batam\n"
+            f"⏰ Open daily 10 AM – 10 PM\n"
+            f"Chat on WhatsApp: {WA_LINK}\n\n"
         )
     return body + _tags(lang, extra=["#behindthescenes", "#spavibe"])
 
@@ -285,16 +287,16 @@ def caption_r4(content: dict, lang: str) -> str:
             f"Jangan sampai ketinggalan! ⏳\n\n"
             f"🎁 {headline}\n"
             f"{sub}\n\n"
-            f"👉 {cta} sekarang — DM atau telp +65 6222 5885\n"
-            f"📍 1 Keong Saik Rd, Singapore\n\n"
+            f"👉 {cta} sekarang — Chat WhatsApp: {WA_LINK}\n"
+            f"📍 Penuin Centre, Lubuk Baja, Batam\n\n"
         )
     else:
         body = (
             f"Don't miss out! ⏳\n\n"
             f"🎁 {headline}\n"
             f"{sub}\n\n"
-            f"👉 {cta} — DM or call +65 6222 5885\n"
-            f"📍 1 Keong Saik Rd, Singapore\n\n"
+            f"👉 {cta} — Chat on WhatsApp: {WA_LINK}\n"
+            f"📍 Penuin Centre, Lubuk Baja, Batam\n\n"
         )
     return body + _tags(lang, extra=["#massagepromo", "#spaoffer"])
 
@@ -303,25 +305,24 @@ def caption_r5(content: dict, lang: str) -> str:
     """Location/brand reel — curiosity + CTA hook."""
     b = content.get("business", {})
     name = b.get("name", "Djaya Massage")
-    hours = b.get("hours", "10am – 10pm")
-    address = b.get("address", "1 Keong Saik Rd")
+    hours_raw = b.get("hours", "")
+    hours = hours_raw.get(lang, "10 AM – 10 PM") if isinstance(hours_raw, dict) else (hours_raw or "10 AM – 10 PM")
+    address = b.get("address", "Penuin Centre, Lubuk Baja, Batam")
 
     if lang == "id":
         body = (
-            f"Tau nggak, ada spa mewah di jantung Singapore? 🇸🇬\n\n"
+            f"Tau nggak, ada spa tersembunyi di Batam? 🌿\n\n"
             f"✨ {name}\n"
-            f"📍 {address}, Singapore\n"
+            f"📍 {address}\n"
             f"⏰ {hours} setiap hari\n"
-            f"📞 +65 6222 5885\n\n"
-            f"Booking via DM atau telepon langsung 👆\n\n"
+            f"Chat WhatsApp: {WA_LINK}\n\n"
         )
     else:
         body = (
-            f"Did you know there's a hidden gem spa in the heart of Singapore? 🇸🇬\n\n"
+            f"Did you know there's a hidden gem spa in Batam? 🌿\n\n"
             f"✨ {name}\n"
-            f"📍 {address}, Singapore\n"
+            f"📍 {address}\n"
             f"⏰ Open daily {hours}\n"
-            f"📞 +65 6222 5885\n\n"
-            f"Book via DM or give us a call 👆\n\n"
+            f"Chat on WhatsApp: {WA_LINK}\n\n"
         )
-    return body + _tags(lang, extra=["#singaporespa", "#hiddengem"])
+    return body + _tags(lang, extra=["#batamspa", "#hiddengem"])
