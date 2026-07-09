@@ -160,15 +160,15 @@ def run() -> None:
     )
     ROT.commit_rotation(ROTATION_PATH)
 
-    # Advance week index every Sunday
-    if datetime.now(timezone.utc).weekday() == 6:
-        ROT.increment_week(ROTATION_PATH)
-        ROT.commit_rotation(ROTATION_PATH)
-
     _wait_for_cdn(cdn_url, timeout=120)
 
     media_id = META.publish_reel(cdn_url, caption, IG_USER_ID, META_ACCESS_TOKEN)
     print(f"[djaya-reel] published!  media_id={media_id}")
+
+    # Advance week index every Sunday — only after a successful publish
+    if datetime.now(timezone.utc).weekday() == 6:
+        ROT.increment_week(ROTATION_PATH)
+        ROT.commit_rotation(ROTATION_PATH)
 
 
 if __name__ == "__main__":
